@@ -1,0 +1,84 @@
+# Description: Script will create a new feature class within a geodatabase, using template feature classes.
+# 
+# Ian Bruce
+# 21 May 2018
+# Haley & Aldrich, Inc.
+#
+
+import arcpy
+from arcpy import env
+
+input_gdb = arcpy.GetParameter(0) # point to your desired geodatabase location
+input_fc_type = arcpy.GetParameterAsText(1) # designate feature class type
+input_fc_sr = arcpy.GetParameter(2) # designate spatial reference
+
+# Clean invalid feature class name inputs
+def valid_fc_name(name):
+    if ' ' in name or '-' in name:
+        name = name.replace('-','_')
+        name = name.replace(' ','_')
+        return name
+    else:
+        return name
+
+input_fc_name = valid_fc_name(arcpy.GetParameterAsText(3)) # name your feature class
+input_fc_path = "{0}\{1}".format(input_gdb, input_fc_name) # generate your working path
+        
+# Fields for Line Feature Class
+def ha_fc_line(fc):
+    arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_x_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_y_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_x_end", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_y_end", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+
+# Fields for Point Feature Class
+def ha_fc_point(fc):
+    arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_x", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "coord_y", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "latitude", "DOUBLE", 12, 8, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "longitude", "DOUBLE", 12, 8, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_value", "DOUBLE", 12, 3, "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+
+# Fields for Polygon Feature Class
+def ha_fc_poly(fc):
+    arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
+    arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+    
+# Create feature class depending on type selection
+if input_fc_type == 'Polygon':
+    arcpy.CreateFeatureclass_management(input_gdb, input_fc_name, "POLYGON", "", "DISABLED", "DISABLED", input_fc_sr)
+    ha_fc_poly(input_fc_path)
+elif input_fc_type == 'Line':
+    arcpy.CreateFeatureclass_management(input_gdb, input_fc_name, "POLYLINE", "", "DISABLED", "DISABLED", input_fc_sr)
+    ha_fc_line(input_fc_path)
+elif input_fc_type == 'Point':
+    arcpy.CreateFeatureclass_management(input_gdb, input_fc_name, "POINT", "", "DISABLED", "DISABLED", input_fc_sr)
+    ha_fc_point(input_fc_path)
