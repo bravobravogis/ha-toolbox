@@ -1,0 +1,47 @@
+## 
+## Ian Bruce
+## Haley & Aldrich, Inc.
+## 22 May 2018
+##
+## Description: Outputs a formatted CSV with coordinates, including northings/eastings (feet) and latitude/longitude (decimal degrees).
+##
+
+import arcpy
+import csv
+from collections import defaultdict
+
+arcpy.env.workspace = arcpy.GetParameter(0)  # set the location of your current workspace
+feature_class = arcpy.GetParameter(1)  # specify the feature class to be queried
+identifier_field = arcpy.GetParameterAsText(2)  # specify field of unique identifier
+coord_fields = ["SHAPE@Y", "SHAPE@X"] + [identifier_field]  # create list of query fields
+where_clause = arcpy.GetParameterAsText(3)  # specify your query expression to extract required data
+output_path = arcpy.GetParameterAsText(4)  # specify output path
+output_name = arcpy.GetParameterAsText(5)  # specify output file name
+
+sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
+sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
+
+searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
+    searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+
+searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
+    searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+
+searcher = defaultdict(list)  # empty data dictionary for final coordinate compilation
+for row in (searcher_pcs, searcher_gcs):  # combines two data dictionaries into one using shared key field
+    for key, value in row.items():
+        searcher[key].extend(value)  # adds values within list (not append!)
+
+with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  # create and name your empty CSV file (file_ouput)
+    file_output = csv.writer(coord_file)  # create an empty writer object and specifies delimiter
+    file_output.writerow(["Location ID", "Northings", "Eastings", "Latitude", "Longitude"])  # specify and write the CSV column headings
+    for k, v in searcher.items():  # write combined coordinate list to CSV file as record
+        well_id = k  # pulls data from combined coordinate table
+        northings, eastings = v[0], v[1]  # northings (Y) and eastings (X)
+        latitude, longitude = v[2], v[3]  # latitude (Y) and longitude (X)
+        final_data_row = [well_id, northings, eastings, latitude, longitude]  # assigns fields in desired order
+        file_output.writerow(final_data_row)  # writes data to the CSV row
+
+print "Processing has been completed."
