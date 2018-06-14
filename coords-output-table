@@ -10,13 +10,12 @@ import arcpy
 import csv
 from collections import defaultdict
 
-arcpy.env.workspace = arcpy.GetParameter(0)  # set the location of your current workspace
-feature_class = arcpy.GetParameter(1)  # specify the feature class to be queried
-identifier_field = arcpy.GetParameterAsText(2)  # specify field of unique identifier
+feature_class = arcpy.GetParameter(0)  # specify the feature class to be queried
+identifier_field = arcpy.GetParameterAsText(1)  # specify field of unique identifier
 coord_fields = ["SHAPE@Y", "SHAPE@X"] + [identifier_field]  # create list of query fields
-where_clause = arcpy.GetParameterAsText(3)  # specify your query expression to extract required data
-output_path = arcpy.GetParameterAsText(4)  # specify output path
-output_name = arcpy.GetParameterAsText(5)  # specify output file name
+where_clause = arcpy.GetParameterAsText(2)  # specify your query expression to extract required data
+output_path = arcpy.GetParameterAsText(3)  # specify output path
+output_name = arcpy.GetParameterAsText(4)  # specify output file name
 
 sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
 sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
