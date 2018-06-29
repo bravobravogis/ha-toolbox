@@ -1,7 +1,7 @@
 ## 
 ## Ian Bruce
 ## Haley & Aldrich, Inc.
-## 22 May 2018
+## 28 May 2018
 ##
 ## Description: Outputs a formatted CSV with coordinates, including northings/eastings (feet) and latitude/longitude (decimal degrees).
 ##
@@ -12,13 +12,19 @@ from collections import defaultdict
 
 feature_class = arcpy.GetParameter(0)  # specify the feature class to be queried
 identifier_field = arcpy.GetParameterAsText(1)  # specify field of unique identifier
+sr_loader = arcpy.GetParameterAsText(2)  # specify spatial reference
+sr = arcpy.SpatialReference()  # create an empty spatial reference object
 coord_fields = ["SHAPE@Y", "SHAPE@X"] + [identifier_field]  # create list of query fields
-where_clause = arcpy.GetParameterAsText(2)  # specify your query expression to extract required data
-output_path = arcpy.GetParameterAsText(3)  # specify output path
-output_name = arcpy.GetParameterAsText(4)  # specify output file name
+where_clause = arcpy.GetParameterAsText(3)  # specify your query expression to extract required data
+output_path = arcpy.GetParameterAsText(4)  # specify output path
+output_name = arcpy.GetParameterAsText(5)  # specify output file name
 
-sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
-sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
+if sr_loader and sr_loader != '#':  # check for spatial reference input from user
+    sr.loadFromString(sr_loader)  # load empty spatial reference object with parameter string
+    sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
+else:
+    sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
+    sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
 
 searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
 for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
@@ -43,4 +49,4 @@ with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  
         final_data_row = [well_id, northings, eastings, latitude, longitude]  # assigns fields in desired order
         file_output.writerow(final_data_row)  # writes data to the CSV row
 
-print "Processing has been completed."
+arcpy.AddMessage("Processing has been completed.")
