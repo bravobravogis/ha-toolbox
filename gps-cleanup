@@ -82,7 +82,7 @@ if desc_field_gps.dataType == 'ShapeFile':
     
 elif desc_field_gps.dataType == "FeatureClass":
     arcpy.AddField_management(field_gps, "loc_id", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 24
-    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60" "", "NULLABLE", "NON_REQUIRED") # row 25
+    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60", "", "NULLABLE", "NON_REQUIRED") # row 25
     arcpy.AddField_management(field_gps, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED") # row 26
     arcpy.AddField_management(field_gps, "x_coord", "DOUBLE", 16, 4, "", "NULLABLE", "NON_REQUIRED") # row 27
     arcpy.AddField_management(field_gps, "y_coord", "DOUBLE", 16, 4, "", "NULLABLE", "NON_REQUIRED") # row 28
@@ -93,7 +93,7 @@ elif desc_field_gps.dataType == "FeatureClass":
     arcpy.AddField_management(field_gps, "region", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 33
     arcpy.AddField_management(field_gps, "gps_precision", "FLOAT", 6, 3, "", "NULLABLE", "NON_REQUIRED") # row 34
     arcpy.AddField_management(field_gps, "gps_accuracy", "FLOAT", 6, 3, "", "NULLABLE", "NON_REQUIRED") # row 35
-    arcpy.AddField_management(field_gps, "gps_filename", "TEXT", "", "", "60" "", "NULLABLE", "NON_REQUIRED") # row 36
+    arcpy.AddField_management(field_gps, "gps_filename", "TEXT", "", "", "60", "", "NULLABLE", "NON_REQUIRED") # row 36
     arcpy.AddField_management(field_gps, "status", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 37
     arcpy.AddField_management(field_gps, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED") # row 38
     arcpy.AddField_management(field_gps, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED") # row 39
