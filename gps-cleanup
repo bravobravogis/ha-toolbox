@@ -10,9 +10,9 @@
 import arcpy
 
 field_gps = arcpy.GetParameterAsText(0) # input gps file from user (path)
-company_name = arcpy.GetParameterAsText(3) # input company of data source from user
-proj_descr = arcpy.GetParameterAsText(1) # input name of project from user
-proj_region = arcpy.GetParameterAsText(2) # input location of project from user
+company_name = arcpy.GetParameterAsText(1) # input company of data source from user
+proj_descr = arcpy.GetParameterAsText(2) # input name of project from user
+proj_region = arcpy.GetParameterAsText(3) # input location of project from user
 addl_note = arcpy.GetParameterAsText(4) # input additional notes from user
 
 desc_field_gps = arcpy.Describe(field_gps) # retrieves description object for gps file
