@@ -1,100 +1,140 @@
 # gps standardization routine
 # 
-# date: 15 October 2017
+# date: 7 July 2018
 # originator: ian bruce
 # description: standardizes trimble gps exports - adds fields to gps export, populates fields 
 #              with data from gps fields, removes selected gps fields
-# notes: add user input for field_gps (file location), loc_descr, loc_region, and company name
+# notes: add user input for field_gps (file location), loc_descr, loc_region, company name, and notes
 #
 
-import os
 import arcpy
 
 field_gps = arcpy.GetParameter(0) # input gps file from user (path)
-company_name = arcpy.GetParameter(3) # input company of data source from user
-proj_descr = arcpy.GetParameter(1) # input name of project from user
-proj_region = arcpy.GetParameter(2) # input location of project from user
+company_name = arcpy.GetParameterAsText(1).upper() # input company of data source from user
+proj_descr = arcpy.GetParameterAsText(2).upper() # input name of project from user
+proj_region = arcpy.GetParameterAsText(3).upper() # input location of project from user
+sample_type = arcpy.GetParameterAsText(4).upper() # input sample type from user
+addl_note = arcpy.GetParameterAsText(5).upper() # input additional notes from user
 
 desc_field_gps = arcpy.Describe(field_gps) # retrieves description object for gps file
-sr_field_gps = desc_field_gps.spatialReference # retrieves spatial reference for gps file
+sr_field_gps = desc_field_gps.spatialReference # retrieves spatial reference object for gps file
 
+combined_gps_fields = [] # empty list to populate with complete set of field names
 trimble_fields = [] # empty list to populate with field names
+
 for field in arcpy.ListFields(field_gps): # iterates through fields in gps file and adds field names to empty list
     trimble_fields.append(field.name) # command to add field name to end of list
 
 # adds fields based upon whether file is shapefile or feature class (description object property)
-if desc_field_gps.dataType != "FeatureClass":
-    arcpy.AddField_management(field_gps, "loc_id", "TEXT", "", "", "40")
-    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60")
-    arcpy.AddField_management(field_gps, "loc_descr", "TEXT", "", "", "100")
-    arcpy.AddField_management(field_gps, "x_coord", "DOUBLE", 16, 4)
-    arcpy.AddField_management(field_gps, "y_coord", "DOUBLE", 16, 4)
-    arcpy.AddField_management(field_gps, "lat_dd", "DOUBLE", 14, 8)
-    arcpy.AddField_management(field_gps, "long_dd", "DOUBLE", 14, 8)
-    arcpy.AddField_management(field_gps, "date_gps", "TEXT", "", "", "30")
-    arcpy.AddField_management(field_gps, "gps_elev", "DOUBLE", 8, 2)
-    arcpy.AddField_management(field_gps, "region", "TEXT", "", "", "40")
-    arcpy.AddField_management(field_gps, "gps_prec", "FLOAT", 6, 3)
-    arcpy.AddField_management(field_gps, "gps_acc", "FLOAT", 6, 3)
-    arcpy.AddField_management(field_gps, "gps_file", "TEXT", "", "", "60")
-    arcpy.AddField_management(field_gps, "status", "TEXT", "", "", "40")
-    arcpy.AddField_management(field_gps, "source", "TEXT", "", "", "200")
-    arcpy.AddField_management(field_gps, "notes", "TEXT", "", "", "200")
-else:
-    arcpy.AddField_management(field_gps, "loc_id", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60" "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "x_coord", "DOUBLE", 16, 4, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "y_coord", "DOUBLE", 16, 4, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "latitude_dd", "DOUBLE", 14, 8, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "longitude_dd", "DOUBLE", 14, 8, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "date_gps", "TEXT", "", "", "30" "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "gps_elevation", "DOUBLE", 8, 2, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "region", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "gps_precision", "FLOAT", 6, 3, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "gps_accuracy", "FLOAT", 6, 3, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "gps_filename", "TEXT", "", "", "60" "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "status", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(field_gps, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED")
-
-combined_gps_fields = [] # empty list to populate with complete set of field names
-for field in arcpy.ListFields(field_gps):
-    combined_gps_fields.append(field.name)
-
-with arcpy.da.UpdateCursor(field_gps, combined_gps_fields) as update_cursor:   
-    for row in update_cursor:
-        if "Latitude" in combined_gps_fields or "Longitude" in combined_gps_fields:
-            row[24] = row[2] # update loc_id with Comment field
-            row[25] = row[10]  #u pdate loc_type with Feature Name field
-            row[26] = proj_descr # update loc_descr with project descriptor
-            row[29] = row[21] # update latitude_dd with Latitude field
-            row[30] = row[22] # update longitude_dd with Longitude field
-            row[31] = str(row[7]).split(" ")[0] + " " + row[8] # update gps_date with GPS Date and GPS Time
-            row[32] = row[17] # update gps_elevation with GNSS Height field
-            row[33] = proj_region # update region with unique location descriptor
-            row[34] = row[19] # update gps_precision with Horizontal Precision field
-            row[35] = row[3] # update gps_accuracy with PDOP field
-            row[36] = row[11] # update gps_file with Datafile field
-            row[37] = row[5] # update status with Correction Type field
-            row[38] = row[6] + ", " + company_name # update source with Receiver Type field
-            row[39] = row[2] # update notes with Comment field
-        else:
-            row[24] = row[2] # update loc_id with Comment field
-            row[25] = row[10]  # update loc_type with Feature Name field
-            row[26] = proj_descr # update loc_descr with project descriptor
-            row[27] = row[22] # update x_coord with Eastings field
-            row[28] = row[21] # update y_coord with Northings field
-            row[31] = str(row[7]).split(" ")[0] + " " + row[8] # update gps_date with GPS Date and GPS Time
-            row[32] = row[17] # update gps_elevation with GNSS Height field
-            row[33] = proj_region # update region with unique location descriptor
-            row[34] = row[19] # update gps_precision with Horizontal Precision field
-            row[35] = row[3] # update gps_accuracy with PDOP field
-            row[36] = row[11] # update gps_file with Datafile field
-            row[37] = row[5] # update status with Correction Type field
-            row[38] = row[6] + ", " + company_name # update source with Receiver Type field
-            row[39] = row[2] # update notes with Comment field
-        update_cursor.updateRow(row)
+if desc_field_gps.dataType == "ShapeFile":
+    arcpy.AddField_management(field_gps, "loc_id", "TEXT", "", "", "40") # row 24
+    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60") # row 25
+    arcpy.AddField_management(field_gps, "loc_descr", "TEXT", "", "", "100") # row 26
+    arcpy.AddField_management(field_gps, "x_coord", "DOUBLE", 16, 4) # row 27
+    arcpy.AddField_management(field_gps, "y_coord", "DOUBLE", 16, 4) # row 28
+    arcpy.AddField_management(field_gps, "lat_dd", "DOUBLE", 14, 8) # row 29
+    arcpy.AddField_management(field_gps, "long_dd", "DOUBLE", 14, 8) # row 30
+    arcpy.AddField_management(field_gps, "date_gps", "TEXT", "", "", "30") # row 31
+    arcpy.AddField_management(field_gps, "gps_elev", "TEXT", "", "", "20") # row 32
+    arcpy.AddField_management(field_gps, "region", "TEXT", "", "", "40") # row 33
+    arcpy.AddField_management(field_gps, "gps_prec", "FLOAT", 6, 3)  # row 34
+    arcpy.AddField_management(field_gps, "gps_acc", "FLOAT", 6, 3)  # row 35
+    arcpy.AddField_management(field_gps, "gps_file", "TEXT", "", "", "60") # row 36
+    arcpy.AddField_management(field_gps, "status", "TEXT", "", "", "40") # row 37
+    arcpy.AddField_management(field_gps, "source", "TEXT", "", "", "200") # row 38
+    arcpy.AddField_management(field_gps, "notes", "TEXT", "", "", "200") # row 39
+    
+    for field in arcpy.ListFields(field_gps): # iterates through fields in modified gps file and adds field names to empty list
+        combined_gps_fields.append(field.name) # command to add field name to end of list
+    
+    with arcpy.da.UpdateCursor(field_gps, combined_gps_fields) as update_cursor:   
+        for row in update_cursor:
+            if sr_field_gps.type == "Geographic":
+                row[24] = row[2] # update loc_id with Comment field
+                row[25] = sample_type  #update loc_type with feature type
+                row[26] = proj_descr # update loc_descr with project descriptor
+                row[29] = row[21] # update latitude_dd with Latitude field
+                row[30] = row[22] # update longitude_dd with Longitude field
+                row[31] = str(row[7]).split(" ")[0] + " @ " + row[8] # update gps_date with GPS Date and GPS Time
+                row[32] = "{0} ({1})".format(row[17], row[18]) # update gps_elevation with GNSS Height and Vertical Precision fields
+                row[33] = proj_region # update region with unique location descriptor
+                row[34] = row[19] # update gps_precision with Horizontal Precision field
+                row[35] = row[3] # update gps_accuracy with PDOP field
+                row[36] = row[11] # update gps_file with Datafile field
+                row[37] = row[5] # update status with Correction Type field
+                row[38] = "{0}, {1}".format(company_name, row[6]) # update source with company and Receiver Type field
+                row[39] = addl_note # update notes with additional notes information
+            elif sr_field_gps.type == "Projected":
+                row[24] = row[2] # update loc_id with Comment field
+                row[25] = row[10]  # update loc_type with Feature Name field
+                row[26] = proj_descr # update loc_descr with project descriptor
+                row[27] = row[22] # update x_coord with Eastings field
+                row[28] = row[21] # update y_coord with Northings field
+                row[31] = str(row[7]).split(" ")[0] + " " + row[8] # update gps_date with GPS Date and GPS Time
+                row[32] = "{0} ({1})".format(row[17], row[18]) # update gps_elevation with GNSS Height and Vertical Precision fields
+                row[33] = proj_region # update region with unique location descriptor
+                row[34] = row[19] # update gps_precision with Horizontal Precision field
+                row[35] = row[3] # update gps_accuracy with PDOP field
+                row[36] = row[11] # update gps_file with Datafile field
+                row[37] = row[5] # update status with Correction Type field
+                row[38] = "{0}, {1}".format(company_name, row[6]) # update source with company and Receiver Type field
+                row[39] = addl_note # update notes with additional notes information
+            update_cursor.updateRow(row)
+    
+elif desc_field_gps.dataType == "FeatureClass":
+    arcpy.AddField_management(field_gps, "loc_id", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 24
+    arcpy.AddField_management(field_gps, "loc_type", "TEXT", "", "", "60", "", "NULLABLE", "NON_REQUIRED") # row 25
+    arcpy.AddField_management(field_gps, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED") # row 26
+    arcpy.AddField_management(field_gps, "x_coord", "DOUBLE", 16, 4, "", "", "NULLABLE", "NON_REQUIRED") # row 27
+    arcpy.AddField_management(field_gps, "y_coord", "DOUBLE", 16, 4, "", "", "NULLABLE", "NON_REQUIRED") # row 28
+    arcpy.AddField_management(field_gps, "latitude_dd", "DOUBLE", 14, 8, "", "", "NULLABLE", "NON_REQUIRED") # row 29
+    arcpy.AddField_management(field_gps, "longitude_dd", "DOUBLE", 14, 8, "", "", "NULLABLE", "NON_REQUIRED") # row 30
+    arcpy.AddField_management(field_gps, "date_gps", "TEXT", "", "", "30", "", "NULLABLE", "NON_REQUIRED") # row 31
+    arcpy.AddField_management(field_gps, "gps_elev", "TEXT", "", "", "20", "", "NULLABLE", "NON_REQUIRED") # row 32
+    arcpy.AddField_management(field_gps, "region", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 33
+    arcpy.AddField_management(field_gps, "gps_precision", "FLOAT", 6, 3, "", "", "NULLABLE", "NON_REQUIRED") # row 34
+    arcpy.AddField_management(field_gps, "gps_accuracy", "FLOAT", 6, 3, "", "", "NULLABLE", "NON_REQUIRED") # row 35
+    arcpy.AddField_management(field_gps, "gps_filename", "TEXT", "", "", "60", "", "NULLABLE", "NON_REQUIRED") # row 36
+    arcpy.AddField_management(field_gps, "status", "TEXT", "", "", "40", "", "NULLABLE", "NON_REQUIRED") # row 37
+    arcpy.AddField_management(field_gps, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED") # row 38
+    arcpy.AddField_management(field_gps, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED") # row 39
+    
+    for field in arcpy.ListFields(field_gps): # iterates through fields in modified gps file and adds field names to empty list
+        combined_gps_fields.append(field.name) # command to add field name to end of list
+    
+    with arcpy.da.UpdateCursor(field_gps, combined_gps_fields) as update_cursor:   
+        for row in update_cursor:
+            if sr_field_gps.type == "Geographic":
+                row[24] = row[2] # update loc_id with Comment field
+                row[25] = sample_type  #update loc_type with feature type field
+                row[26] = proj_descr # update loc_descr with project descriptor
+                row[29] = row[21] # update latitude_dd with Latitude field
+                row[30] = row[22] # update longitude_dd with Longitude field
+                row[31] = str(row[7]).split(" ")[0] + " @ " + row[8] # update gps_date with GPS Date and GPS Time
+                row[32] = "{0} ({1})".format(row[17], row[18]) # update gps_elevation with GNSS Height and Vertical Precision fields
+                row[33] = proj_region # update region with unique location descriptor
+                row[34] = row[19] # update gps_precision with Horizontal Precision field
+                row[35] = row[3] # update gps_accuracy with PDOP field
+                row[36] = row[11] # update gps_file with Datafile field
+                row[37] = row[5] # update status with Correction Type field
+                row[38] = "{0}, {1}".format(company_name, row[6]) # update source with company and Receiver Type field
+                row[39] = addl_note # update notes with additional notes information
+            elif sr_field_gps.type == "Projected":
+                row[24] = row[2] # update loc_id with Comment field
+                row[25] = row[10]  # update loc_type with Feature Name field
+                row[26] = proj_descr # update loc_descr with project descriptor
+                row[27] = row[22] # update x_coord with Eastings field
+                row[28] = row[21] # update y_coord with Northings field
+                row[31] = str(row[7]).split(" ")[0] + " " + row[8] # update gps_date with GPS Date and GPS Time
+                row[32] = "{0} ({1})".format(row[17], row[18]) # update gps_elevation with GNSS Height and Vertical Precision fields
+                row[33] = proj_region # update region with unique location descriptor
+                row[34] = row[19] # update gps_precision with Horizontal Precision field
+                row[35] = row[3] # update gps_accuracy with PDOP field
+                row[36] = row[11] # update gps_file with Datafile field
+                row[37] = row[5] # update status with Correction Type field
+                row[38] = "{0}, {1}".format(company_name, row[6]) # update source with company and Receiver Type field
+                row[39] = addl_note # update notes with additional notes information
+            update_cursor.updateRow(row)
 
 trimble_selection = range(2, 21) # list of numbers corresponding to fields selected for removal
 drop_fields = [trimble_fields[i] for i in trimble_selection] # list of fields to delete
