@@ -30,14 +30,13 @@ if sr.name == 'Unknown' and sr_gcs.name == 'Unknown':  # check for unknown coord
     arcpy.AddMessage("Processing could not continue - unknown coordinate system.")
     sys.exit()  # exit the script
 
-if sr.type == 'Projected':
-    searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
-    for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
-        searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
-elif sr.type == 'Geographic':
-    searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
-    for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
-        searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
+    searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+
+searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
+    searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
 
 searcher = defaultdict(list)  # empty data dictionary for final coordinate compilation
 if sr.type == 'Projected' and sr_gcs.name != 'Unknown':
