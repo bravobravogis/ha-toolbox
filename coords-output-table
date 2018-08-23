@@ -7,6 +7,7 @@
 ##
 
 import arcpy
+import sys
 import csv
 from collections import defaultdict
 
@@ -19,34 +20,49 @@ where_clause = arcpy.GetParameterAsText(3)  # specify your query expression to e
 output_path = arcpy.GetParameterAsText(4)  # specify output path
 output_name = arcpy.GetParameterAsText(5)  # specify output file name
 
-if sr_loader and sr_loader != '#':  # check for spatial reference input from user
+if sr_loader != '':  # check for spatial reference input from user
     sr.loadFromString(sr_loader)  # load empty spatial reference object with parameter string
     sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
 else:
     sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
     sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
 
-searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
-for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
-    searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+if sr.type == 'Projected':
+    searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
+    for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
+        searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
 
-searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
-for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
-    searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+if sr_gcs.name != 'Unknown':
+    searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
+    for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
+        searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
+
+if sr.name == 'Unknown' and sr_gcs.name == 'Unknown':
+    arcpy.AddMessage("Processing could not continue - unknown coordinate system.")
+    sys.exit()
 
 searcher = defaultdict(list)  # empty data dictionary for final coordinate compilation
-for row in (searcher_pcs, searcher_gcs):  # combines two data dictionaries into one using shared key field
-    for key, value in row.items():
-        searcher[key].extend(value)  # adds values within list (not append!)
-
-with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  # create and name your empty CSV file (file_ouput)
-    file_output = csv.writer(coord_file)  # create an empty writer object and specifies delimiter
-    file_output.writerow(["Location ID", "Northings", "Eastings", "Latitude", "Longitude"])  # specify and write the CSV column headings
-    for k, v in searcher.items():  # write combined coordinate list to CSV file as record
-        well_id = k  # pulls data from combined coordinate table
-        northings, eastings = v[0], v[1]  # northings (Y) and eastings (X)
-        latitude, longitude = v[2], v[3]  # latitude (Y) and longitude (X)
-        final_data_row = [well_id, northings, eastings, latitude, longitude]  # assigns fields in desired order
-        file_output.writerow(final_data_row)  # writes data to the CSV row
+if sr.type == 'Projected' and sr_gcs.name != 'Unknown':
+    for row in (searcher_pcs, searcher_gcs):  # combines two data dictionaries into one using shared key field
+        for key, value in row.items():
+            searcher[key].extend(value)  # adds values within list (not append!)
+    with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  # create and name your empty CSV file (file_ouput)
+        file_output = csv.writer(coord_file)  # create an empty writer object and specifies delimiter
+        file_output.writerow(["Location ID", "Northings", "Eastings", "Latitude", "Longitude"])  # specify and write the CSV column headings
+        for k, v in searcher.items():  # write combined coordinate list to CSV file as record
+            well_id = k  # pulls data from combined coordinate table
+            northings, eastings = v[0], v[1]  # northings (Y) and eastings (X)
+            latitude, longitude = v[2], v[3]  # latitude (Y) and longitude (X)
+            final_data_row = [well_id, northings, eastings, latitude, longitude]  # assigns fields in desired order
+            file_output.writerow(final_data_row)  # writes data to the CSV row
+elif sr.type == 'Geographic' and sr_gcs.name != 'Unknown':
+    with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  # create and name your empty CSV file (file_ouput)
+        file_output = csv.writer(coord_file)  # create an empty writer object and specifies delimiter
+        file_output.writerow(["Location ID", "Latitude", "Longitude"])  # specify and write the CSV column headings
+        for k, v in searcher_gcs.items():  # write combined coordinate list to CSV file as record
+            well_id = k  # pulls data from combined coordinate table
+            latitude, longitude = v[0], v[1]  # latitude (Y) and longitude (X)
+            final_data_row = [well_id, latitude, longitude]  # assigns fields in desired order
+            file_output.writerow(final_data_row)  # writes data to the CSV row
 
 arcpy.AddMessage("Processing has been completed.")
