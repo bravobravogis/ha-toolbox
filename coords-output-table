@@ -1,14 +1,13 @@
 ## 
 ## Ian Bruce
 ## Haley & Aldrich, Inc.
-## 28 May 2018
+## 22 August 2018
 ##
 ## Description: Outputs a formatted CSV with coordinates, including northings/eastings (feet) and latitude/longitude (decimal degrees).
 ##
 
 import arcpy
-import sys
-import csv
+import sys, csv
 from collections import defaultdict
 
 feature_class = arcpy.GetParameter(0)  # specify the feature class to be queried
@@ -22,24 +21,23 @@ output_name = arcpy.GetParameterAsText(5)  # specify output file name
 
 if sr_loader != '':  # check for spatial reference input from user
     sr.loadFromString(sr_loader)  # load empty spatial reference object with parameter string
-    sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
+    sr_gcs = sr.GCS  # assign geographic coordinate system object to variable
 else:
     sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
-    sr_gcs = sr.GCS  # convert spatial reference to geographic coordinate system
+    sr_gcs = sr.GCS  # assign geographic coordinate system object to variable
+
+if sr.name == 'Unknown' and sr_gcs.name == 'Unknown':  # check for unknown coordinate system
+    arcpy.AddMessage("Processing could not continue - unknown coordinate system.")
+    sys.exit()  # exit the script
 
 if sr.type == 'Projected':
     searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
     for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
         searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
-
-if sr_gcs.name != 'Unknown':
+elif sr.type == 'Geographic':
     searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
     for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
         searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
-
-if sr.name == 'Unknown' and sr_gcs.name == 'Unknown':
-    arcpy.AddMessage("Processing could not continue - unknown coordinate system.")
-    sys.exit()
 
 searcher = defaultdict(list)  # empty data dictionary for final coordinate compilation
 if sr.type == 'Projected' and sr_gcs.name != 'Unknown':
