@@ -1,52 +1,48 @@
-# Description: Script will create a new feature class within a geodatabase, using template feature classes.
-# 
-# Ian Bruce
-# 21 May 2018
-# Haley & Aldrich, Inc.
-#
+## Description: Script will create a new feature class within a geodatabase, using template feature classes.
+## Notes:       Designed to add feature class to geodatabase ONLY.
 
 import arcpy
-from arcpy import env
 
-input_gdb = arcpy.GetParameter(0) # point to your desired geodatabase location
-input_fc_type = arcpy.GetParameterAsText(1) # designate feature class type
-input_fc_sr = arcpy.GetParameter(2) # designate spatial reference
+input_gdb = arcpy.GetParameter(0)  # point to your desired geodatabase location
+input_fc_type = arcpy.GetParameterAsText(1)  # designate feature class type
+input_fc_sr = arcpy.GetParameter(2)  # designate spatial reference
 
-# Clean invalid feature class name inputs
-def clean_name(name):
+def clean_name(name):  # clean invalid feature class name inputs
     
     """ Returns a string with non-standard characters removed. """ 
     
     import string
     
-    name = name.encode('ascii', errors='ignore') # converts standard ASCII input from Unicode format
-    name = name.strip() # removes leading and trailing spaces
-    name = name.lower() # converts to lowercase
+    name = name.encode('ascii', errors='ignore')  # converts standard ASCII input from Unicode format
+    name = name.strip()  # removes leading and trailing spaces
+    name = name.lower()  # converts to lowercase
     
-    swap = string.maketrans("-+&. ", "_____") # translation table (from, to)
-    punc = string.punctuation # assigns punctuation character set to variable
-    punc = punc.replace("-", "") # removes punctuation that will be replaced
+    swap = string.maketrans("-+&. ", "_____")  # translation table (from, to)
+    punc = string.punctuation  # assigns punctuation character set to variable
+    punc = punc.replace("-", "")  # removes punctuation that will be replaced
     punc = punc.replace("+", "")
     punc = punc.replace("&", "")
     punc = punc.replace(".", "")
     punc = punc.replace("_", "")
-    name = string.translate(name, swap, punc) # replaces characters based on translation table then deletes punctuation
+    name = string.translate(name, swap, punc)  # replaces characters based on translation table then deletes punctuation
     
-    mod_name = str(name[0]) # assigns first character of input to empty string
-    for i, elem in enumerate(name): # iterates through each element of input string
+    mod_name = str(name[0])  # assigns first character of input to empty string
+    for i, elem in enumerate(name):  # iterates through each element of input string
         if i > 0:
-            if elem == name[i-1] and elem == '_': # checks previous element for underscore characters
-                continue # skips repeating underscore characters
+            if elem == name[i-1] and elem == '_':  # checks previous element for underscore characters
+                continue  # skips repeating underscore characters
             else:
-                mod_name += elem # builds input string sequentially
+                mod_name += elem  # builds input string sequentially
 
-    return mod_name # outputs rebuilt (cleaned) user input
+    return mod_name  # outputs rebuilt (cleaned) user input
 
-input_fc_name = clean_name(arcpy.GetParameterAsText(3)) # name your feature class
-input_fc_path = "{0}\{1}".format(input_gdb, input_fc_name) # generate your working path
+input_fc_name = clean_name(arcpy.GetParameterAsText(3))  # name your feature class
+input_fc_path = "{0}\{1}".format(input_gdb, input_fc_name)  # generate your working path
         
-# Fields for Line Feature Class
-def ha_fc_line(fc):
+def ha_fc_line(fc):  # fields for Line Feature Class
+
+    """ Adds standard fields to polyline feature class. """
+
     arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "coord_x_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "coord_y_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
@@ -57,13 +53,15 @@ def ha_fc_line(fc):
     arcpy.AddField_management(fc, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
 
-# Fields for Point Feature Class
-def ha_fc_point(fc):
+def ha_fc_point(fc):  # fields for Point Feature Class
+
+    """ Adds standard fields to point feature class. """
+    
     arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "coord_x", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "coord_y", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
@@ -75,25 +73,27 @@ def ha_fc_point(fc):
     arcpy.AddField_management(fc, "loc_value", "DOUBLE", 12, 3, "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
 
-# Fields for Polygon Feature Class
-def ha_fc_poly(fc):
+def ha_fc_poly(fc):  # fields for Polygon Feature Class
+
+    """ Adds standard fields to polygon feature class. """
+    
     arcpy.AddField_management(fc, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(fc, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(fc, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
     
-# Create feature class depending on type selection
+# create feature class depending on type selection
 if input_fc_type == 'Polygon':
     arcpy.CreateFeatureclass_management(input_gdb, input_fc_name, "POLYGON", "", "DISABLED", "DISABLED", input_fc_sr)
     ha_fc_poly(input_fc_path)
