@@ -13,15 +13,36 @@ input_fc_type = arcpy.GetParameterAsText(1) # designate feature class type
 input_fc_sr = arcpy.GetParameter(2) # designate spatial reference
 
 # Clean invalid feature class name inputs
-def valid_fc_name(name):
-    if ' ' in name or '-' in name:
-        name = name.replace('-','_')
-        name = name.replace(' ','_')
-        return name
-    else:
-        return name
+def clean_name(name):
+    
+    """ Returns a string with non-standard characters removed. """ 
+    
+    import string
+    
+    name = name.encode('ascii', errors='ignore') # converts standard ASCII input from Unicode format
+    name = name.strip() # removes leading and trailing spaces
+    name = name.lower() # converts to lowercase
+    
+    swap = string.maketrans("-+&. ", "_____") # translation table (from, to)
+    punc = string.punctuation # assigns punctuation character set to variable
+    punc = punc.replace("-", "") # removes punctuation that will be replaced
+    punc = punc.replace("+", "")
+    punc = punc.replace("&", "")
+    punc = punc.replace(".", "")
+    punc = punc.replace("_", "")
+    name = string.translate(name, swap, punc) # replaces characters based on translation table then deletes punctuation
+    
+    mod_name = str(name[0]) # assigns first character of input to empty string
+    for i, elem in enumerate(name): # iterates through each element of input string
+        if i > 0:
+            if elem == name[i-1] and elem == '_': # checks previous element for underscore characters
+                continue # skips repeating underscore characters
+            else:
+                mod_name += elem # builds input string sequentially
 
-input_fc_name = valid_fc_name(arcpy.GetParameterAsText(3)) # name your feature class
+    return mod_name # outputs rebuilt (cleaned) user input
+
+input_fc_name = clean_name(arcpy.GetParameterAsText(3)) # name your feature class
 input_fc_path = "{0}\{1}".format(input_gdb, input_fc_name) # generate your working path
         
 # Fields for Line Feature Class
