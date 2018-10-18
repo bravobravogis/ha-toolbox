@@ -1,4 +1,4 @@
-# ha-toolbox
+# toolbox
 Custom Toolbox for ArcGIS Desktop
 
 ## Synopsis
@@ -18,4 +18,4 @@ Download the custom toolbox and extract the .tbx file to the following folder:\
 _C:\Users\<user name>\AppData\Roaming\ESRI\Desktop<version number>\ArcToolbox\My Toolboxes_
 
 ## Contributors
-Ian Bruce (Haley & Aldrich, Inc.) is the sole contributor (as of *13 June 2018*).
+Ian Bruce is the sole contributor (as of *13 June 2018*).
