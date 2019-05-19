@@ -4,8 +4,8 @@
 # Description: Script will create a new geodatabase, with template feature classes.
 # 
 # Ian Bruce
-# 12 July 2018
-# Haley & Aldrich, Inc.
+# 19 May 2019
+# Bravo Bravo
 #
 
 import arcpy, string
@@ -47,11 +47,19 @@ workspace = "{0}\{1}.gdb".format(output_folder, input_name_gdb) # concatenate na
 arcpy.CreateFileGDB_management(output_folder, gdb) # create a file geodatabase
 env.workspace = workspace # set the workspace (new geodatabase)
 
-arcpy.CreateDomain_management(workspace, "Binary_Decision", "YES or NO field", "TEXT", "CODED", "DUPLICATE") # create a YES/NO domain
-arcpy.CreateDomain_management(workspace, "Update", "Date of field updates", "DATE", "RANGE") # create a domain for date of modification
-dictBinaryDecision = {"YES": "YES", "NO": "NO"} # data dictionary for coded values in domain
-for coded_value in dictBinaryDecision: # assign coded values to existing domain
-    arcpy.AddCodedValueToDomain_management(workspace, "Binary_Decision", coded_value, dictBinaryDecision[coded_value]) # sets valid values for YES/NO coded domain
+arcpy.CreateDomain_management(workspace, "YES_NO", "YES or NO", "TEXT", "CODED", "DUPLICATE") # create a YES/NO domain
+arcpy.CreateDomain_management(workspace, "STATUS", "Status categories", "TEXT", "CODED", "DUPLICATE") # create a status domain
+arcpy.CreateDomain_management(workspace, "SAMPLE_TYPE", "Sample types", "TEXT", "CODED", "DUPLICATE") # create a status domain
+arcpy.CreateDomain_management(workspace, "UPDATED", "Last updated", "DATE", "RANGE") # create a domain for date of modification
+dictYesNo = {"yes": "yes", "no": "no"} # data dictionary for coded values in domain
+dictStatus = {"proposed": "proposed", "in progress": "in progress", "complete": "complete"} # data dictionary for coded values in domain
+dictSampType = {"ss": "surface soil", "sub": "subsurface soil", "sw": "surface water", "gw": "groundwater", "confirmation": "confirmation soil", "sidewall": "confirmation sidewall soil", "ia": "indoor air", "aa": "ambient air"} # data dictionary for coded values in domain
+for coded_value in dictYesNo: # assign coded values to existing domain
+    arcpy.AddCodedValueToDomain_management(workspace, "YES_NO", coded_value, dictYesNo[coded_value]) # sets valid values for YES/NO coded domain
+for coded_value in dictStatus: # assign coded values to existing domain
+    arcpy.AddCodedValueToDomain_management(workspace, "STATUS", coded_value, dictStatus[coded_value]) # sets valid values for YES/NO coded domain
+for coded_value in dictSampType: # assign coded values to existing domain
+    arcpy.AddCodedValueToDomain_management(workspace, "SAMPLE_TYPE", coded_value, dictSampType[coded_value]) # sets valid values for YES/NO coded domain
 
 input_name_lines = clean_name(arcpy.GetParameterAsText(3)) # assign name to line feature class
 input_name_polys = clean_name(arcpy.GetParameterAsText(4)) # assign name to polygons feature class
@@ -65,56 +73,62 @@ arcpy.CreateFeatureclass_management(workspace, input_name_polys, "POLYGON", "", 
 arcpy.CreateFeatureclass_management(workspace, input_name_pts, "POINT", "", "DISABLED", "DISABLED", sr)
 
 # populate line feature class with standard fields
-arcpy.AddField_management(input_name_lines, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "coord_x_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "coord_y_start", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "coord_x_end", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "coord_y_end", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
-arcpy.AddField_management(input_name_lines, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_lines, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+arcpy.AddField_management(input_name_lines, "visible", "TEXT", "", "", "5", "", "NULLABLE", "NON_REQUIRED", "YES_NO")
+arcpy.AddField_management(input_name_lines, "loc_id", "TEXT", "", "", "30", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_type", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_subtype", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_value", "FLOAT", "12", "3", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_region", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "loc_status", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "coord_y_start", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "coord_x_start", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "coord_y_end", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "coord_x_end", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "revision", "TEXT", "", "", "20", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_lines, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "UPDATED")
 arcpy.EnableEditorTracking_management(input_name_lines, "", "", "", "last_updated", "NO_ADD_FIELDS", "DATABASE_TIME") # enable automatic updates for revision date
-arcpy.AssignDomainToField_management(input_name_lines, "visible", "Binary_Decision") # assign YES/NO domain to visible field
+arcpy.AssignDomainToField_management(input_name_lines, "visible", "YES_NO") # assign YES/NO domain to visible field
 
 # populate polygon feature class with standard fields
-arcpy.AddField_management(input_name_polys, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
-arcpy.AddField_management(input_name_polys, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_polys, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+arcpy.AddField_management(input_name_polys, "visible", "TEXT", "", "", "5", "", "NULLABLE", "NON_REQUIRED", "YES_NO")
+arcpy.AddField_management(input_name_polys, "loc_id", "TEXT", "", "", "30", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_type", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_subtype", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_value", "FLOAT", "12", "3", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_region", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "loc_status", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "coord_y_centroid", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "coord_x_centroid", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "revision", "TEXT", "", "", "20", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_polys, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "UPDATED")
 arcpy.EnableEditorTracking_management(input_name_polys, "", "", "", "last_updated", "NO_ADD_FIELDS", "DATABASE_TIME") # enable automatic updates for revision date
-arcpy.AssignDomainToField_management(input_name_polys, "visible", "Binary_Decision") # assign YES/NO domain to visible field
+arcpy.AssignDomainToField_management(input_name_polys, "visible", "YES_NO") # assign YES/NO domain to visible field
 
 # populate points feature class with standard fields
-arcpy.AddField_management(input_name_pts, "loc_id", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "coord_x", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "coord_y", "DOUBLE", 14, 4, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "latitude", "DOUBLE", 12, 8, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "longitude", "DOUBLE", 12, 8, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "loc_type", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "loc_subtype", "TEXT", "", "", 60, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "loc_descr", "TEXT", "", "", 100, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "loc_value", "DOUBLE", 12, 3, "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "region", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "status", "TEXT", "", "", 40, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
-arcpy.AddField_management(input_name_pts, "source", "TEXT", "", "", 240, "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED")
-arcpy.AddField_management(input_name_pts, "notes", "TEXT", "", "", 120, "", "NULLABLE", "NON_REQUIRED")
+arcpy.AddField_management(input_name_pts, "visible", "TEXT", "", "", "5", "", "NULLABLE", "NON_REQUIRED", "YES_NO")
+arcpy.AddField_management(input_name_pts, "loc_id", "TEXT", "", "", "30", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_type", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_subtype", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_descr", "TEXT", "", "", "100", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_value", "FLOAT", "12", "3", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_region", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "loc_status", "TEXT", "", "", "50", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "coord_y", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "coord_x", "DOUBLE", "14", "4", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "latitude", "DOUBLE", "12", "8", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "longitude", "DOUBLE", "12", "8", "", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "source", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "revision", "TEXT", "", "", "20", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "notes", "TEXT", "", "", "200", "", "NULLABLE", "NON_REQUIRED", "")
+arcpy.AddField_management(input_name_pts, "last_updated", "DATE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "UPDATED")
 arcpy.EnableEditorTracking_management(input_name_pts, "", "", "", "last_updated", "NO_ADD_FIELDS", "DATABASE_TIME") # enable automatic updates for revision date 
-arcpy.AssignDomainToField_management(input_name_pts, "visible", "Binary_Decision") # assign YES/NO domain to visible field
-
+arcpy.AssignDomainToField_management(input_name_pts, "visible", "YES_NO") # assign YES/NO domain to visible field
 
 if input_ddp_type == 'Frames':
     # populate data driven polygons feature class with standard fields
@@ -125,7 +139,7 @@ if input_ddp_type == 'Frames':
     arcpy.AddField_management(input_name_ddp, "page_sequence", "SHORT", "", "", "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "page_rotation", "DOUBLE", 5, 1, "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "page_scale", "DOUBLE", 10, 1, "", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(input_name_ddp, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(input_name_ddp, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "YES_NO")
     arcpy.AddField_management(input_name_ddp, "note_1", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_2", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_3", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
@@ -134,7 +148,7 @@ if input_ddp_type == 'Frames':
     arcpy.AddField_management(input_name_ddp, "note_6", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_7", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_8", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AssignDomainToField_management(input_name_ddp, "visible", "Binary_Decision") # assign YES/NO domain to visible field
+    arcpy.AssignDomainToField_management(input_name_ddp, "visible", "YES_NO") # assign YES/NO domain to visible field
 elif input_ddp_type == 'Points':
     # populate data driven points feature class with standard fields
     arcpy.CreateFeatureclass_management(workspace, input_name_ddp, "POINT", "", "DISABLED", "DISABLED", sr)
@@ -144,7 +158,7 @@ elif input_ddp_type == 'Points':
     arcpy.AddField_management(input_name_ddp, "page_sequence", "SHORT", "", "", "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "page_rotation", "DOUBLE", 5, 1, "", "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "page_scale", "DOUBLE", 10, 1, "", "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AddField_management(input_name_ddp, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "Binary_Decision")
+    arcpy.AddField_management(input_name_ddp, "visible", "TEXT", "", "", 10, "", "NULLABLE", "NON_REQUIRED", "YES_NO")
     arcpy.AddField_management(input_name_ddp, "note_1", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_2", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_3", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
@@ -153,4 +167,4 @@ elif input_ddp_type == 'Points':
     arcpy.AddField_management(input_name_ddp, "note_6", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_7", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
     arcpy.AddField_management(input_name_ddp, "note_8", "TEXT", "", "", 250, "", "NULLABLE", "NON_REQUIRED")
-    arcpy.AssignDomainToField_management(input_name_ddp, "visible", "Binary_Decision") # assign YES/NO domain to visible field
+    arcpy.AssignDomainToField_management(input_name_ddp, "visible", "YES_NO") # assign YES/NO domain to visible field
