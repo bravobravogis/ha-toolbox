@@ -1,44 +1,47 @@
-## 
-## Ian Bruce
-## Haley & Aldrich, Inc.
-## 22 August 2018
-##
-## Description: Outputs a formatted CSV with coordinates, including northings/eastings (feet) and latitude/longitude (decimal degrees).
-##
+# 
+# ArcPy Script - Quick Coordinate Table Export
+# 
+# Description: Script will output a sorted table with coordinates, with optional filter query.
+# 
+# Ian Bruce
+# 19 May 2019
+# Bravo Bravo
+#
 
 import arcpy
 import sys, csv
 from collections import defaultdict
 
-feature_class = arcpy.GetParameter(0)  # specify the feature class to be queried
-identifier_field = arcpy.GetParameterAsText(1)  # specify field of unique identifier
-sr_loader = arcpy.GetParameterAsText(2)  # specify spatial reference
-sr = arcpy.SpatialReference()  # create an empty spatial reference object
-coord_fields = ["SHAPE@Y", "SHAPE@X"] + [identifier_field]  # create list of query fields
-where_clause = arcpy.GetParameterAsText(3)  # specify your query expression to extract required data
+feature_class = arcpy.GetParameterAsText(0)  # specify the feature class to be queried
+unique_field = arcpy.GetParameterAsText(1)  # specify field of unique identifier
+sr = arcpy.GetParameter(2)  # specify spatial reference
+coord_fields = ["SHAPE@Y", "SHAPE@X"] + [unique_field]  # create list of query fields
+table_query = arcpy.GetParameterAsText(3)  # specify your query expression to extract required data
 output_path = arcpy.GetParameterAsText(4)  # specify output path
 output_name = arcpy.GetParameterAsText(5)  # specify output file name
 
-if sr_loader != '':  # check for spatial reference input from user
-    sr.loadFromString(sr_loader)  # load empty spatial reference object with parameter string
+arcpy.AddMessage("Query: {0}".format(table_query))
+
+if not sr:  # check for spatial reference input from user
+    sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
     sr_gcs = sr.GCS  # assign geographic coordinate system object to variable
 else:
-    sr = arcpy.Describe(feature_class).spatialReference  # pull the spatial reference data from feature class as projected coordinate system
     sr_gcs = sr.GCS  # assign geographic coordinate system object to variable
 
 if sr.name == 'Unknown' and sr_gcs.name == 'Unknown':  # check for unknown coordinate system
-    arcpy.AddMessage("Processing could not continue - unknown coordinate system.")
+    arcpy.AddMessage("Processing could not continue - unknown coordinate system..")
     sys.exit()  # exit the script
 
 searcher_pcs = defaultdict(list)  # empty data dictionary for projected coords
-for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr):  # create search query (projected coords)
-    searcher_pcs[row[2]].extend(row[:2])  # adds values within list (not append!)
-
 searcher_gcs = defaultdict(list)  # empty data dictionary for geographic coords
-for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause, sr_gcs):  # create search query (geographic coords)
-    searcher_gcs[row[2]].extend(row[:2])  # adds values within list (not append!)
-
 searcher = defaultdict(list)  # empty data dictionary for final coordinate compilation
+
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause=table_query, spatial_reference=sr):  # create search query (projected coords)
+    searcher_pcs[row[2].strip()].extend(row[:2])  # adds values within list (not append!)
+for row in arcpy.da.SearchCursor(feature_class, coord_fields, where_clause=table_query, spatial_reference=sr_gcs):  # create search query (geographic coords)
+    searcher_gcs[row[2].strip()].extend(row[:2])  # adds values within list (not append!)
+
+final_data_row = list()
 if sr.type == 'Projected' and sr_gcs.name != 'Unknown':
     for row in (searcher_pcs, searcher_gcs):  # combines two data dictionaries into one using shared key field
         for key, value in row.items():
@@ -50,8 +53,8 @@ if sr.type == 'Projected' and sr_gcs.name != 'Unknown':
             well_id = k  # pulls data from combined coordinate table
             northings, eastings = v[0], v[1]  # northings (Y) and eastings (X)
             latitude, longitude = v[2], v[3]  # latitude (Y) and longitude (X)
-            final_data_row = [well_id, northings, eastings, latitude, longitude]  # assigns fields in desired order
-            file_output.writerow(final_data_row)  # writes data to the CSV row
+            final_data_row.append([well_id, northings, eastings, latitude, longitude])  # assigns fields in desired order
+        file_output.writerows(sorted(final_data_row))  # writes data to the CSV row
 elif sr.type == 'Geographic' and sr_gcs.name != 'Unknown':
     with open('{0}\{1}.csv'.format(output_path, output_name), 'wb') as coord_file:  # create and name your empty CSV file (file_ouput)
         file_output = csv.writer(coord_file)  # create an empty writer object and specifies delimiter
@@ -59,7 +62,7 @@ elif sr.type == 'Geographic' and sr_gcs.name != 'Unknown':
         for k, v in searcher_gcs.items():  # write combined coordinate list to CSV file as record
             well_id = k  # pulls data from combined coordinate table
             latitude, longitude = v[0], v[1]  # latitude (Y) and longitude (X)
-            final_data_row = [well_id, latitude, longitude]  # assigns fields in desired order
-            file_output.writerow(final_data_row)  # writes data to the CSV row
+            final_data_row.append([well_id, latitude, longitude])  # assigns fields in desired order
+        file_output.writerows(sorted(final_data_row))  # writes data to the CSV row
 
 arcpy.AddMessage("Processing has been completed.")
