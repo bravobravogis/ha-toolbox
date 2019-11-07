@@ -91,14 +91,14 @@ def formatTime(x):
 
 if __name__ == "__main__":
 
-    print "\n\nInitiating EBMUD enterprise geodatabase replication (MAPGEODB)...\n\n"
+    print "\n\nInitiating enterprise geodatabase replication (MAPGEODB)...\n\n"
     
-    ebmud_userid = str()
-    ebmud_password = str()
-    while len(ebmud_userid) < 1:
-        ebmud_userid = raw_input("Enter your EBMUD User ID: ")
-    while len(ebmud_password) < 1:
-        ebmud_password = raw_input("Enter your EBMUD Password: ")
+    userid = str()
+    password = str()
+    while len(userid) < 1:
+        userid = raw_input("Enter your User ID: ")
+    while len(password) < 1:
+        password = raw_input("Enter your Password: ")
 
     startTime = time.time()
     now = datetime.datetime.now()
@@ -110,18 +110,18 @@ if __name__ == "__main__":
     database location and where you want the log to be stored'''
 
     arcpy.CreateDatabaseConnection_management(out_folder_path="C:\\GIS\\Replication Output\\Setup Files",
-                                              out_name="TEMP_PROD_DB.sde",
-                                              database_platform="ORACLE",
-                                              instance="MAPGEODB",
+                                              out_name="TEMP_DB.sde",
+                                              database_platform="<db_type>",
+                                              instance="<instance>",
                                               account_authentication="DATABASE_AUTH",
-                                              username=ebmud_userid,
-                                              password=ebmud_password,
+                                              username=userid,
+                                              password=password,
                                               save_user_pass="SAVE_USERNAME",
-                                              version="MAPPROD.MappingQA")
+                                              version="<version>")
     
     logPath = "C:\\GIS\\Replication Output\\Log Files"
-    databaseConnection = "C:\\GIS\\Replication Output\\Setup Files\\TEMP_PROD_DB.sde"
-    targetGDB = "C:\\GIS\\Replication Output\\EBMUD_WaterNetwork_Backup.gdb"
+    databaseConnection = "C:\\GIS\\Replication Output\\Setup Files\\TEMP_DB.sde"
+    targetGDB = "C:\\GIS\\Replication Output\\Enterprise_GDB_Backup.gdb"
 
     ############################### logging items ###################################
     # Make a global logging object.
