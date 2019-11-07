@@ -1,0 +1,164 @@
+import time, datetime
+import os, sys
+import logging, logging.handlers
+import shutil
+import arcpy
+
+########################## user defined functions ##############################
+
+def getDatabaseItemCount(workspace):
+    log = logging.getLogger("script_log")
+    arcpy.env.workspace = workspace
+    feature_classes = []
+    log.info("Compiling a list of items in {0} and getting count...".format(workspace))
+    for dirpath, dirnames, filenames in arcpy.da.Walk(workspace, datatype=['FeatureClass', 'FeatureDataset', 'GeometricNetwork', 'RelationshipClass', 'Table'], type='Any'):
+        for filename in filenames:
+            feature_classes.append(os.path.join(dirpath, filename))
+    log.info("There are a total of {0} items in the database.".format(len(feature_classes)))
+    return feature_classes, len(feature_classes)
+
+def replicateDatabase(dbConnection, targetGDB):
+    log = logging.getLogger("script_log")
+    startTime = time.time()
+
+    if arcpy.Exists(dbConnection):  # check for source database connection
+        featSDE, cntSDE = getDatabaseItemCount(dbConnection)  # generate list of feature classes and count
+        log.info("Enterprise geodatabase being copied: {0} -- Feature Count: {1}".format(dbConnection, cntSDE))  # output source db name and feature count to log
+        if arcpy.Exists(targetGDB):  # check for target database
+            featGDB, cntGDB = getDatabaseItemCount(targetGDB)  # generate list of feature classes and count
+            log.info("Previous backup geodatabase: {0} -- Feature Count: {1}".format(targetGDB, cntGDB))  # output target db name and feature count to log
+            try:
+                shutil.rmtree(targetGDB)
+                log.info("Deleted previous backup geodatabase {0}.".format(os.path.split(targetGDB)[-1]))  # output deletion record to log
+            except Exception as e:
+                log.info(e)  # output failure to delete to log
+
+        GDB_Path, GDB_Name = os.path.split(targetGDB)
+        log.info("Creating new geodatabase {0}...".format(GDB_Name))
+        arcpy.CreateFileGDB_management(GDB_Path, GDB_Name)
+
+        arcpy.env.workspace = dbConnection
+
+        try:
+            datasetList = [arcpy.Describe(a).name for a in arcpy.ListDatasets()]
+        except Exception, e:
+            datasetList = []
+            log.info(e)
+        try:
+            featureClasses = [arcpy.Describe(a).name for a in arcpy.ListFeatureClasses()]
+        except Exception, e:
+            featureClasses = []
+            log.info(e)
+        try:
+            tables = [arcpy.Describe(a).name for a in arcpy.ListTables()]
+        except Exception, e:
+            tables = []
+            log.info(e)
+
+        #Compiles a list of the previous three lists to iterate over
+        allDbData = datasetList + featureClasses + tables
+
+        for sourcePath in allDbData:
+            targetName = sourcePath.split('.')[-1]
+            targetPath = os.path.join(targetGDB, targetName)
+            if not arcpy.Exists(targetPath):
+                try:
+                    log.info("Atempting to copy {0} to {1}...".format(targetName, targetPath))
+                    arcpy.Copy_management(sourcePath, targetPath)
+                    log.info("Finished copying {0} to {1}.".format(targetName, targetPath))
+                except Exception as e:
+                    log.info("Unable to copy {0} to {1}.".format(targetName, targetPath))
+                    log.info(e)
+            else:
+                log.info("{0} already exists and will be skipped.".format(targetName))
+
+        featGDB, cntGDB = getDatabaseItemCount(targetGDB)
+        log.info("Completed replication of {0} -- Feature Count: {1}".format(dbConnection, cntGDB))
+
+    else:
+        log.info("{0} does not exist or is not supported - please check the database path and try again.".format(dbConnection))
+
+#####################################################################################
+
+def formatTime(x):
+    minutes, seconds_rem = divmod(x, 60)
+    if minutes >= 60:
+        hours, minutes_rem = divmod(minutes, 60)
+        return "%02d:%02d:%02d" % (hours, minutes_rem, seconds_rem)
+    else:
+        minutes, seconds_rem = divmod(x, 60)
+        return "00:%02d:%02d" % (minutes, seconds_rem)
+
+if __name__ == "__main__":
+
+    print "\n\nInitiating enterprise geodatabase replication (MAPGEODB)...\n\n"
+    
+    userid = str()
+    password = str()
+    while len(userid) < 1:
+        userid = raw_input("Enter your User ID: ")
+    while len(password) < 1:
+        password = raw_input("Enter your Password: ")
+
+    startTime = time.time()
+    now = datetime.datetime.now()
+    
+    print "\n\nOfficially starting duplication routine [{0}/{1}/{2} at {3}:{4}]...\n\n".format(now.month, now.day, now.year, now.hour, now.minute)
+
+    ############################### user variables #################################
+    '''change these variables to the location of the database being copied, the target 
+    database location and where you want the log to be stored'''
+
+    arcpy.CreateDatabaseConnection_management(out_folder_path="C:\\GIS\\Replication Output\\Setup Files",
+                                              out_name="TEMP_DB.sde",
+                                              database_platform="<db_type>",
+                                              instance="<instance>",
+                                              account_authentication="DATABASE_AUTH",
+                                              username=userid,
+                                              password=password,
+                                              save_user_pass="SAVE_USERNAME",
+                                              version="<version>")
+    
+    logPath = "C:\\GIS\\Replication Output\\Log Files"
+    databaseConnection = "C:\\GIS\\Replication Output\\Setup Files\\TEMP_DB.sde"
+    targetGDB = "C:\\GIS\\Replication Output\\Enterprise_GDB_Backup.gdb"
+
+    ############################### logging items ###################################
+    # Make a global logging object.
+    logName = os.path.join(logPath,(now.strftime("%Y%m%d_%H%M.log")))
+
+    log = logging.getLogger("script_log")
+    log.setLevel(logging.INFO)
+
+    h1 = logging.FileHandler(logName)
+    h2 = logging.StreamHandler()
+
+    f = logging.Formatter("[%(levelname)s] [%(asctime)s] [%(lineno)d] - %(message)s",'%m/%d/%Y %I:%M:%S %p')
+
+    h1.setFormatter(f)
+    h2.setFormatter(f)
+
+    h1.setLevel(logging.INFO)
+    h2.setLevel(logging.INFO)
+
+    log.addHandler(h1)
+    log.addHandler(h2)
+
+    log.info('--------------------------------------------------')
+    log.info('Script: {0}'.format(os.path.basename(sys.argv[0])))
+    log.info('--------------------------------------------------')
+
+    try:
+
+        replicateDatabase(databaseConnection, targetGDB)
+
+    except Exception, e:
+
+        log.exception(e)
+
+    totalTime = formatTime((time.time() - startTime))
+    log.info('--------------------------------------------------')
+    log.info("Script completed after: {0}".format(totalTime))
+    log.info('--------------------------------------------------')
+
+    os.remove(databaseConnection)
