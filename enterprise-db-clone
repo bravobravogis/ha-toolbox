@@ -91,7 +91,7 @@ def formatTime(x):
 
 if __name__ == "__main__":
 
-    print "\n\nInitiating enterprise geodatabase replication (MAPGEODB)...\n\n"
+    print "\n\nInitiating enterprise geodatabase replication...\n\n"
     
     userid = str()
     password = str()
