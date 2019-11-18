@@ -1,0 +1,44 @@
+import csv
+import geopy
+import time
+
+ago_username = raw_input("Enter ArcGIS username: ")
+ago_password = raw_input("Enter ArcGIS password: ")
+ago_referer = r"https://equinoxspatial.maps.arcgis.com"
+
+input_path = raw_input("Provide input file path for address locations: ")
+output_path = raw_input("Provide output file path for matched addresses: ")
+unmatched_path = raw_input("Provide output file path for unmatched addresses: ")
+matched_address_locs = list()
+unmatched_address_locs = list()
+
+ago_geocoder = geopy.geocoders.ArcGIS(ago_username, ago_password, ago_referer, token_lifetime=240, scheme="https")
+
+with open(input_path, "rb") as location_inventory:
+    location_reader = csv.reader(location_inventory)
+    next(location_reader)
+    for num, row in enumerate(location_reader, 1):
+        if row[0] == None:
+            address = "{}, {}, {}, {}".format(row[1].upper(), row[2].upper(), row[3], row[4])
+        else:
+            address = "{} {}, {}, {}, {}".format(row[0].strip(), row[1].upper(), row[2].upper(), row[3], row[4])
+        try:
+            location = ago_geocoder.geocode(address)
+            matched_address_locs.append([num, address, location.address, location.latitude, location.longitude])
+            time.sleep(1)
+        except:
+            print "Could not geolocate: {0}".format(address)
+            unmatched_address_locs.append([address])
+            continue
+
+with open(output_path, 'wb') as export_table:
+    matched_writer = csv.writer(export_table)
+    matched_writer.writerow(["ADDR_ID", "ORIGINAL_ADDRESS", "GEOCODE_ADDRESS", "LATITUDE", "LONGITUDE"])
+    for row in matched_address_locs:
+        matched_writer.writerow(row)
+
+with open(unmatched_path, 'wb') as unmatched_table:
+    unmatched_writer = csv.writer(unmatched_table)
+    unmatched_writer.writerow(["ADDR_ID", "ADDRESS"])
+    for num, row in enumerate(unmatched_address_locs, 1):
+        unmatched_writer.writerow(num, row)
